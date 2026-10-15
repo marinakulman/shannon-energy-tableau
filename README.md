@@ -1,4 +1,4 @@
-# Shannon Energy — Growth, Channel Economics & Retention
+# Shannon Energy - Growth, Channel Economics & Retention
 
 A Tableau analysis of customer acquisition, channel profitability and retention for a
 fictional Irish energy retailer. Built end to end: raw data audit → reproducible cleaning
@@ -71,7 +71,7 @@ rate by tariff and retention by fuel type.
 Findings are labelled by how strongly the data supports them. This distinction is kept
 throughout the project.
 
-### FACT — directly supported by the data
+### FACT - directly supported by the data
 
 | Channel | Acquisitions | CPA | 12-month retention | Cost per retained customer |
 |---|---:|---:|---:|---:|
@@ -93,10 +93,10 @@ throughout the project.
 - **Discount 12M carries the highest monthly churn rate** of any tariff; Business Flex the
   lowest.
 - **Every channel missed its acquisition target**, with an overall shortfall of 4.2%.
-  Direct B2B is furthest behind at −6.4%, Field Sales closest at −1.4%.
+  Direct B2B is furthest behind at -6.4%, Field Sales closest at -1.4%.
 - Blended monthly churn is **2.92%**; rolling 12-month revenue is **€158.1M**.
 
-### INFERENCE — a reasonable reading of the data
+### INFERENCE - a reasonable reading of the data
 
 - The channels that convert cheapest appear to attract the most price-driven customers.
   Retention falls monotonically as CPA rises across six of the seven channels, which is
@@ -105,11 +105,11 @@ throughout the project.
   against 40,998 customers in the customer dimension), so revenue-derived metrics describe
   the billed population rather than every customer on file.
 
-### HYPOTHESIS — requires further investigation
+### HYPOTHESIS - requires further investigation
 
 - The churn spike at months 12–14 **coincides with** the expiry of 12-month contracts, and
   Discount 12M is the worst-performing tariff for churn. This is a plausible explanation,
-  **not a demonstrated cause** — the data contains no renewal event, no price-change date
+  **not a demonstrated cause** - the data contains no renewal event, no price-change date
   and no competitor pricing, so causality cannot be established here.
 
 ---
@@ -119,14 +119,14 @@ throughout the project.
 1. **Re-base channel budgeting on cost per retained customer, not CPA.** On current
    figures that means shifting spend from Price Comparison toward Digital, which delivers
    a retained customer for 35% less.
-2. **Build a retention intervention at month 10–11**, ahead of the observed 12–14 month
+2. **Build a retention intervention at month 10 - 11**, ahead of the observed 12–14 month
    spike rather than after it.
 3. **Treat the Discount 12M tariff as a retention problem, not a pricing success.** It
    acquires well and loses customers faster than any other tariff.
 4. **Investigate the contract-expiry hypothesis properly** by capturing renewal offers,
    price changes at renewal and outcomes. Until then it should not be presented to
    leadership as the cause.
-5. **Fix the `SwitchedTo` capture.** 6,742 of 17,018 churn events — 40% — have no
+5. **Fix the `SwitchedTo` capture.** 6,742 of 17,018 churn events - 40% - have no
    destination recorded, which makes competitor analysis unreliable.
 
 ---
@@ -156,7 +156,7 @@ Nothing was silently dropped. See [`docs/data_quality_report.md`](docs/data_qual
 ### The churn-rate bug worth describing
 
 An early version of the monthly churn rate returned **1.92%**. The correct figure is
-**2.92%** — a third of the churn was missing.
+**2.92%** - a third of the churn was missing.
 
 Two separate causes:
 
@@ -193,7 +193,7 @@ Every calculated field is documented with its business meaning, its formula, its
 aggregation level, its division-by-zero handling and its control value in
 [`docs/metric_dictionary.md`](docs/metric_dictionary.md). Three worth calling out:
 
-- **Closing base** is the base of the last observed month, never a sum across months —
+- **Closing base** is the base of the last observed month, never a sum across months -
   customer counts are a stock, not a flow.
 - **Monthly churn rate** sums numerators and denominators separately. Averaging monthly
   percentages weights a small month the same as a large one.
@@ -239,7 +239,7 @@ Requires Python 3 with pandas. The script reads `data/raw/`, writes prepared tab
 `prepared/`, regenerates the data quality report and prints the control-value table. All
 14 checks must read `OK`.
 
-Prepared data is **not** committed — it is build output, and the script is the source of
+Prepared data is **not** committed - it is build output, and the script is the source of
 truth. To inspect the workbook with data already attached, download the packaged workbook
 directly from the Tableau Public link above.
 
@@ -272,5 +272,5 @@ The company, its customers and the competitors named in the churn data are ficti
 
 ## Author
 
-**Marina Kulman** — Data & BI Analyst, Dublin
+**Marina Kulman** - Data & BI Analyst, Dublin
 [Portfolio](https://marinakulman.github.io/Portfolio/) · [GitHub](https://github.com/marinakulman)
