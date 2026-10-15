@@ -1,8 +1,8 @@
 """
-Shannon Energy — подготовка данных для Tableau.
-Вход  : ../../*.csv  (исходники, НЕ изменяются)
-Выход : ../prepared/*.csv  + ../docs/data_quality_report.md
-Дата среза проекта: 2026-06-30 (фиксированная, НЕ TODAY()).
+Shannon Energy - data preparation for Tableau.
+Input  : ../data/raw/*.csv  (source files, NEVER modified)
+Output : ../prepared/*.csv  + ../docs/data_quality_report.md
+Project cut-off date: 2026-06-30 (fixed, deliberately NOT TODAY()).
 """
 import pandas as pd, numpy as np, os, warnings
 from decimal import Decimal
@@ -21,7 +21,7 @@ def note(s):
 
 L = lambda f: pd.read_csv(os.path.join(SRC, f), encoding='utf-8-sig', dtype=str)
 
-# ---------------------------------------------------------------- справочники
+# ---------------------------------------------------------------- dimensions
 dim_channel = L('Dim_Channel.csv')
 dim_region  = L('Dim_Region.csv')
 dim_segment = L('Dim_Segment.csv')
@@ -29,7 +29,7 @@ dim_fuel    = L('Dim_Fuel.csv')
 dim_tariff  = L('Dim_Tariff.csv')
 dim_cust    = L('Dim_Customer.csv')
 
-# расширяем справочники служебными членами
+# extend dimensions with technical members
 dim_channel = pd.concat([dim_channel, pd.DataFrame([{
     'ChannelCode':'LEG','ChannelName':'Legacy / channel unavailable',
     'ChannelType':'Unknown','ChannelGroup':'Legacy'}])], ignore_index=True)
@@ -39,22 +39,22 @@ dim_region = pd.concat([dim_region, pd.DataFrame([{
 dim_cust['CustomerID'] = dim_cust.CustomerID.str.strip()
 dim_cust['AcquisitionDate'] = pd.to_datetime(dim_cust.AcquisitionDate, format='%Y-%m-%d')
 
-# ---------------------------------------------------------------- привлечения
+# ---------------------------------------------------------------- acquisitions
 acq = L('Fact_Acquisitions.csv')
 n_raw = len(acq)
 acq['CustomerID'] = acq.CustomerID.str.strip()
 acq = acq.drop_duplicates()
 n_dedup = len(acq)
-note(f'Привлечения: {n_raw} строк на входе, удалено полных дублей {n_raw-n_dedup}, осталось {n_dedup}.')
+note(f'Acquisitions: {n_raw} rows in, {n_raw-n_dedup} exact duplicates removed, {n_dedup} retained.')
 
 conflicts = acq[acq.duplicated('CustomerID', keep=False)]
 if len(conflicts):
     conflicts.to_csv(os.path.join(DOC,'conflicts_duplicate_customerid.csv'), index=False)
-    note(f'ВНИМАНИЕ: {conflicts.CustomerID.nunique()} CustomerID с расходящимися записями выгружены в docs/.')
+    note(f'WARNING: {conflicts.CustomerID.nunique()} CustomerID values with conflicting records exported to docs/.')
 else:
-    note('Конфликтов CustomerID после дедупликации нет — ключ уникален.')
+    note('No CustomerID conflicts after deduplication - the key is unique.')
 
-# деньги: снимаем €, разделители тысяч, пробелы. Ошибки НЕ обнуляем.
+# money: strip the euro sign, thousands separators and spaces. Parse failures are NOT zeroed.
 raw_cost = acq.AcquisitionCost
 n_currency = raw_cost.str.contains('€', na=False).sum()
 cost_clean = (raw_cost.str.replace('€','',regex=False)
@@ -62,9 +62,9 @@ cost_clean = (raw_cost.str.replace('€','',regex=False)
                       .str.replace(' ','',regex=False).str.strip())
 acq['AcquisitionCost'] = pd.to_numeric(cost_clean, errors='coerce')
 n_cost_bad = acq.AcquisitionCost.isna().sum()
-note(f'AcquisitionCost: {n_currency} значений содержали знак €; непреобразуемых осталось {n_cost_bad}.')
+note(f'AcquisitionCost: {n_currency} values carried a euro sign; {n_cost_bad} remain unparseable.')
 
-# каналы: явный маппинг, без «похоже на»
+# channels: explicit mapping only, never fuzzy matching
 CHANNEL_MAP = {
  'digital':'DIG','web/digital':'DIG',
  'pcw':'PCW','price comparison':'PCW',
@@ -79,18 +79,18 @@ acq['ChannelCode'] = key.map(CHANNEL_MAP)
 unmapped = acq[acq.ChannelCode.isna()]
 if len(unmapped):
     unmapped.Channel.value_counts().to_csv(os.path.join(DOC,'unmapped_channels.csv'))
-    note(f'ВНИМАНИЕ: {len(unmapped)} строк с неизвестным каналом — выгружены, НЕ отнесены к DIR.')
+    note(f'WARNING: {len(unmapped)} rows with an unknown channel - exported, NOT defaulted to DIR.')
 else:
-    note(f'Каналы: {key.nunique()} исходных написаний сведены к 7 кодам, неизвестных нет.')
+    note(f'Channels: {key.nunique()} source spellings mapped to 7 codes, none unknown.')
 
 n_region_null = acq.RegionCode.isna().sum()
 acq['RegionCode'] = acq.RegionCode.fillna('UNK')
-note(f'RegionCode: {n_region_null} пустых значений помечены UNK (клиенты сохранены).')
+note(f'RegionCode: {n_region_null} blank values flagged UNK (customers retained).')
 
 acq['AcquisitionDate'] = pd.to_datetime(acq.AcquisitionDate, format='%Y-%m-%d')
 acq['CohortMonth'] = acq.AcquisitionDate.values.astype('datetime64[M]')
 
-# ---------------------------------------------------------------- отток
+# ---------------------------------------------------------------- churn
 ch = L('Fact_Churn.csv')
 ch['CustomerID'] = ch.CustomerID.str.strip()
 iso = pd.to_datetime(ch.ChurnDate, format='%Y-%m-%d', errors='coerce')
@@ -98,15 +98,15 @@ dmy = pd.to_datetime(ch.ChurnDate, format='%d/%m/%Y', errors='coerce')
 n_iso, n_dmy = iso.notna().sum(), dmy.notna().sum()
 ch['ChurnDate'] = iso.fillna(dmy)
 n_bad_date = ch.ChurnDate.isna().sum()
-note(f'ChurnDate: {n_iso} в формате ISO, {n_dmy} в DD/MM/YYYY — разобраны явно; нераспознанных {n_bad_date}.')
+note(f'ChurnDate: {n_iso} in ISO format, {n_dmy} in DD/MM/YYYY - parsed explicitly; {n_bad_date} unrecognised.')
 ch['TenureMonths'] = pd.to_numeric(ch.TenureMonths, errors='coerce')
 n_switch_null = ch.SwitchedTo.isna().sum()
 ch['SwitchedTo'] = ch.SwitchedTo.fillna('Not stated')
-note(f'SwitchedTo: {n_switch_null} пустых значений помечены "Not stated".')
-assert not ch.CustomerID.duplicated().any(), 'повторные события оттока'
-note(f'Отток: {len(ch)} событий, повторных событий на клиента нет.')
+note(f'SwitchedTo: {n_switch_null} blank values flagged "Not stated".')
+assert not ch.CustomerID.duplicated().any(), 'repeated churn events per customer'
+note(f'Churn: {len(ch)} events, no customer appears twice.')
 
-# ChurnBase — независимая таблица событий оттока, атрибуты из Dim_Customer
+# ChurnBase - an independent churn-event table, attributes sourced from Dim_Customer
 churn_base = ch.merge(dim_cust[['CustomerID','SegmentCode','RegionCode','FuelCode','TariffCode']],
                       on='CustomerID', how='left')
 churn_base = churn_base.merge(acq[['CustomerID','ChannelCode']], on='CustomerID', how='left')
@@ -114,12 +114,12 @@ n_leg = churn_base.ChannelCode.isna().sum()
 churn_base['ChannelCode'] = churn_base.ChannelCode.fillna('LEG')
 churn_base['RegionCode']  = churn_base.RegionCode.fillna('UNK')
 churn_base['ChurnMonth']  = churn_base.ChurnDate.values.astype('datetime64[M]')
-note(f'ChurnBase: {n_leg} событий оттока без записи о привлечении помечены каналом LEG (не удалены).')
+note(f'ChurnBase: {n_leg} churn events with no matching acquisition flagged channel LEG (retained, not dropped).')
 
-# ---------------------------------------------------------------- когорты
+# ---------------------------------------------------------------- cohorts
 m = acq.merge(ch[['CustomerID','ChurnDate','TenureMonths']], on='CustomerID', how='left')
 m['Churned'] = m.ChurnDate.notna()
-m['TenureAtChurn'] = m.TenureMonths            # исходный, без пересчёта из дней
+m['TenureAtChurn'] = m.TenureMonths            # as supplied, never recomputed from days
 m['MonthsObservable'] = ((DATA_AS_OF.year - m.AcquisitionDate.dt.year)*12
                         + (DATA_AS_OF.month - m.AcquisitionDate.dt.month))
 m['Eligible12Flag'] = (m.MonthsObservable >= 12).astype(int)
@@ -149,7 +149,7 @@ coh = (pd.concat(rows).groupby(KEYS+['N'], as_index=False)
          [['EligibleN','RetainedN','AtRiskN','ChurnAtN']].sum())
 coh = coh[coh.EligibleN > 0]
 coh.to_csv(os.path.join(OUT,'RetentionCohorts.csv'), index=False)
-note(f'RetentionCohorts: {len(coh)} строк (клиент представлен на нескольких N — суммировать клиентов по всем N нельзя).')
+note(f'RetentionCohorts: {len(coh)} rows (a customer appears at several values of N - customers must never be summed across N).')
 
 # ---------------------------------------------------------------- MonthlyPerformance
 GK = ['MonthStart','ChannelCode','SegmentCode','RegionCode','TariffCode','FuelCode']
@@ -172,27 +172,27 @@ for c in ['Acquisitions','ChurnedCustomers','AcquisitionCost']:
     mp[c] = mp[c].fillna(0)
 mp['RevenueObservationCount'] = mp.RevenueObservationCount.fillna(0).astype(int)
 
-# OpeningCustomers = снимок ПРЕДЫДУЩЕГО КАЛЕНДАРНОГО месяца, не «предыдущей строки»
+# OpeningCustomers = snapshot of the PREVIOUS CALENDAR MONTH, not of the previous existing row
 prev = rev[GK+['ClosingCustomers']].copy()
 prev['MonthStart'] = prev.MonthStart + pd.DateOffset(months=1)
 prev = prev.rename(columns={'ClosingCustomers':'OpeningCustomers'})
-# outer, а не left: комбинация ключей, существовавшая в прошлом месяце и
-# исчезнувшая в этом, обязана сохранить свою открывающую базу — иначе
-# знаменатель Monthly Churn Rate молча занижается.
+# outer, not left: a key combination that existed last month and disappeared this
+# month must keep its opening base - otherwise the Monthly Churn Rate
+# denominator is silently understated.
 mp = mp.merge(prev, on=GK, how='outer')
 for c in ['Acquisitions','ChurnedCustomers','AcquisitionCost']:
     mp[c] = mp[c].fillna(0)
 mp['RevenueObservationCount'] = mp.RevenueObservationCount.fillna(0).astype(int)
-# Флаг допустимости месяца для Monthly Churn Rate, зафиксированный на ОБЩЕМ уровне
-# (без бизнес-фильтров). Делает знаменатель вычислимым обычной агрегацией и
-# гарантирует, что отток LEG не теряется. Ограничение описано в словаре показателей.
+# Month-eligibility flag for Monthly Churn Rate, fixed at the OVERALL level
+# (no business filters). It makes the denominator computable by plain aggregation and
+# guarantees LEG churn is not lost. The limitation is documented in the metric dictionary.
 _e = mp.groupby('MonthStart').agg(op=('OpeningCustomers','sum'), obs=('RevenueObservationCount','sum'))
 _ok = set(_e[(_e.obs > 0) & (_e.op > 0)].index)
 mp['MonthEligibleForChurnRate'] = mp.MonthStart.isin(_ok).astype(int)
 
 mp = mp.sort_values(GK)
 mp.to_csv(os.path.join(OUT,'MonthlyPerformance.csv'), index=False)
-note(f'MonthlyPerformance: {len(mp)} строк; OpeningCustomers пуст в {mp.OpeningCustomers.isna().sum()} строках (нет снимка предыдущего месяца).')
+note(f'MonthlyPerformance: {len(mp)} rows; OpeningCustomers is blank in {mp.OpeningCustomers.isna().sum()} rows (no previous-month snapshot).')
 
 # ---------------------------------------------------------------- PlanPerformance
 PK = ['MonthStart','ChannelCode','SegmentCode']
@@ -205,9 +205,9 @@ pp = tgt.merge(act, on=PK, how='outer')
 pp['TargetAcquisitions']  = pp.TargetAcquisitions.fillna(0)
 pp['ActualAcquisitions']  = pp.ActualAcquisitions.fillna(0)
 pp.sort_values(PK).to_csv(os.path.join(OUT,'PlanPerformance.csv'), index=False)
-note(f'PlanPerformance: {len(pp)} строк на детализации месяц × канал × сегмент (план по региону/тарифу/топливу не задан).')
+note(f'PlanPerformance: {len(pp)} rows at month x channel x segment grain (no plan is set by region, tariff or fuel).')
 
-# ---------------------------------------------------------------- Dim + календарь N
+# ---------------------------------------------------------------- dimensions + N calendar
 dim_channel.to_csv(os.path.join(OUT,'Dim_Channel.csv'), index=False)
 dim_region.to_csv(os.path.join(OUT,'Dim_Region.csv'), index=False)
 dim_segment.to_csv(os.path.join(OUT,'Dim_Segment.csv'), index=False)
@@ -218,54 +218,54 @@ churn_base[['CustomerID','ChurnDate','ChurnMonth','ChurnReason','SwitchedTo','Te
             'ChannelCode','SegmentCode','RegionCode','FuelCode','TariffCode']
           ].to_csv(os.path.join(OUT,'ChurnBase.csv'), index=False)
 
-# ---------------------------------------------------------------- контроль
+# ---------------------------------------------------------------- control values
 el = acq_clean.Eligible12Flag.sum(); ret = acq_clean.Retained12Flag.sum()
 cost_el = acq_clean.Eligible12Cost.sum()
 anchor = rev.MonthStart.max()
 r12 = rev[(rev.MonthStart >= anchor - pd.DateOffset(months=11)) & (rev.MonthStart <= anchor)].Revenue.sum()
 checks = [
- ('Привлечения до очистки', n_raw, 26238),
- ('Привлечения после очистки', n_dedup, 25998),
- ('Удалённые дубли', n_raw-n_dedup, 240),
- ('События оттока', len(ch), 17018),
- ('Клиенты с 12 мес. наблюдения', int(el), 16964),
- ('Ушедшие к 12-му месяцу', int(el-ret), 5774),
- ('Оставшиеся к 12-му месяцу', int(ret), 11190),
+ ('Acquisitions before cleaning', n_raw, 26238),
+ ('Acquisitions after cleaning', n_dedup, 25998),
+ ('Duplicates removed', n_raw-n_dedup, 240),
+ ('Churn events', len(ch), 17018),
+ ('Customers with 12 months observable', int(el), 16964),
+ ('Churned by month 12', int(el-ret), 5774),
+ ('Retained at month 12', int(ret), 11190),
  ('12-Month Retention, %', round(100*ret/el,6), 65.963216),
  ('12M Cohort Coverage, %', round(100*el/acq_clean.CustomerID.nunique(),6), 65.251173),
- ('Стоимость привлечения зрелых когорт, €', round(cost_el,2), 1905716.31),
+ ('Acquisition cost of mature cohorts, EUR', round(cost_el,2), 1905716.31),
  ('Cost per Retained Customer, €', round(cost_el/ret,6), 170.305300),
  ('Revenue Rolling 12M, €', round(r12,2), 158057438.68),
- ('События оттока LEG', int(n_leg), 5967),
+ ('LEG churn events', int(n_leg), 5967),
 ]
-# Monthly Churn Rate на сопоставимой области
-# Допустимость месяца определяется НА УРОВНЕ МЕСЯЦА разреза, а не отбрасыванием
-# отдельных строк до агрегирования (иначе теряется отток LEG).
+# Monthly Churn Rate over a comparable scope
+# Eligibility is decided AT MONTH LEVEL, not by discarding individual rows
+# before aggregation (which would lose LEG churn).
 _v = mp[mp.MonthEligibleForChurnRate == 1]
 mcr = 100*_v.ChurnedCustomers.sum()/_v.OpeningCustomers.sum()
 checks.append(('Monthly Churn Rate, %', round(mcr,6), 2.919411))
 note('')
-note('| Проверка | Факт | Ожидание | Статус |')
+note('| Check | Actual | Expected | Status |')
 note('|---|---|---|---|')
 ok_all = True
 for name, got, exp in checks:
     ok = abs(float(got)-float(exp)) < 0.0000015*max(1,abs(exp))
     ok_all &= ok
-    note(f'| {name} | {got:,} | {exp:,} | {"OK" if ok else "РАСХОЖДЕНИЕ"} |')
+    note(f'| {name} | {got:,} | {exp:,} | {"OK" if ok else "MISMATCH"} |')
 checks.append(('Monthly Churn Rate, %', round(mcr,6), 2.919411))
 note('')
-note('ИТОГ: ' + ('все контрольные значения сошлись.' if ok_all else 'ЕСТЬ РАСХОЖДЕНИЯ — формулы не подгонять, искать причину.'))
-note(f'Дата среза: {DATA_AS_OF.date()}. AnchorMonth для Rolling 12M: {anchor.date()}.')
+note('RESULT: ' + ('all control values match.' if ok_all else 'MISMATCHES FOUND - investigate the cause, do not tune the formulas to fit.'))
+note(f'Cut-off date: {DATA_AS_OF.date()}. AnchorMonth for Rolling 12M: {anchor.date()}.')
 
 with open(os.path.join(DOC,'data_quality_report.md'),'w') as f:
-    f.write('# Shannon Energy — отчёт качества данных\n\n')
-    f.write(f'Сгенерирован `scripts/prepare_data.py`. Дата среза: **{DATA_AS_OF.date()}**.\n\n')
+    f.write('# Shannon Energy - Data Quality Report\n\n')
+    f.write(f'Generated by `scripts/prepare_data.py`. Cut-off date: **{DATA_AS_OF.date()}**.\n\n')
     f.write('\n'.join(('' if s.startswith('|') else '- ')+s if s else '' for s in log))
     f.write('\n')
 
-# ---------------------------------------------------------------- денормализация
-# Атрибуты справочников вшиваются в факты: справочники статические и крошечные,
-# fan-out невозможен, а Tableau получает плоские файлы без Relationships.
+# ---------------------------------------------------------------- denormalisation
+# Dimension attributes are merged into the facts: the dimensions are tiny and static,
+# fan-out is impossible, and Tableau receives flat files with no Relationships to manage.
 import subprocess, sys
 subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                 'denormalize.py')], check=True)

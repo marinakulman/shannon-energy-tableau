@@ -1,6 +1,6 @@
-"""Денормализация: атрибуты справочников вшиваются в факты.
-Справочники крошечные (3-8 строк), fan-out невозможен. Даёт плоские CSV,
-которые Tableau читает без Relationships."""
+"""Denormalisation: dimension attributes are merged into the fact tables.
+The dimensions are tiny (3-8 rows) and fan-out is impossible. The result is flat
+CSV files that Tableau reads without needing Relationships."""
 import pandas as pd, os
 P = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','prepared'))
 L = lambda f: pd.read_csv(os.path.join(P,f))
@@ -17,6 +17,6 @@ for f in ['MonthlyPerformance','AcquisitionClean','RetentionCohorts','PlanPerfor
     for k, dim in dims.items():
         if k in d.columns:
             d = d.merge(dim, on=k, how='left')
-    assert len(d) == n0, f'{f}: размножение строк!'
+    assert len(d) == n0, f'{f}: row count changed - fan-out detected!'
     d.to_csv(os.path.join(P, f+'.csv'), index=False)
-    print(f'{f}: {n0} строк, {len(d.columns)} колонок -> {list(d.columns)[-4:]}')
+    print(f'{f}: {n0} rows, {len(d.columns)} columns -> {list(d.columns)[-4:]}')
