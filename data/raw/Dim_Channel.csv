@@ -1,0 +1,8 @@
+﻿ChannelCode,ChannelName,ChannelType,ChannelGroup
+DIG,Digital,B2C,Digital
+PCW,Price Comparison,B2C,Indirect
+CCT,Call Centre,Both,Direct
+FLD,Field Sales,B2C,Direct
+PTR,Partner / Retail,B2C,Indirect
+BRK,Broker,B2B,Indirect
+DIR,Direct B2B,B2B,Direct

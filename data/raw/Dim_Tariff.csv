@@ -1,0 +1,6 @@
+﻿TariffCode,TariffName,TariffFor,ContractMonths,HasIntroDiscount,PriceIndex
+T-DISC12,Discount 12M,B2C,12,Yes,0.86
+T-GRN24,Green Fixed 24M,B2C,24,Yes,1.08
+T-STD,Standard Variable,B2C,0,No,1.18
+T-BFIX,Business Fixed 24M,B2B,24,Yes,1.0
+T-BFLEX,Business Flex,B2B,0,No,1.05
