@@ -14,11 +14,11 @@ recommendations.
 **The cheapest channel to acquire from is one of the most expensive channels to keep
 a customer from.**
 
-Price Comparison has the lowest cost per acquisition in the business at €46 — less than
+Price Comparison has the lowest cost per acquisition in the business at €46 - less than
 a seventh of what a Direct B2B customer costs. On a CPA league table it wins outright.
 
 But only 35.9% of its customers are still there twelve months later. Once retention is
-priced in, each *surviving* Price Comparison customer costs **€127.71** — against
+priced in, each *surviving* Price Comparison customer costs **€127.71** - against
 **€82.96** for Digital, a channel whose CPA is 28% higher.
 
 Ranking channels on acquisition cost alone points the budget at the worst-performing
