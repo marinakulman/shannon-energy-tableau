@@ -8,7 +8,7 @@
    DATA_AS_OF = pd.Timestamp('YYYY-MM-DD')
    ```
 
-   The cut-off date is changed here, together with the dataset — never by switching a
+   The cut-off date is changed here, together with the dataset - never by switching a
    control in the Tableau interface. Keeping it in one place is what makes the analysis
    reproducible.
 
@@ -26,7 +26,7 @@
    observability flags, or the scope a filter is applied at.
 
 5. Check `docs/` for `unmapped_channels.csv` and `conflicts_duplicate_customerid.csv`.
-   These files are written only when a problem is detected — their presence means the run
+   These files are written only when a problem is detected - their presence means the run
    found something that needs a decision.
 
 6. In Tableau, refresh the extracts and update the `DataAsOf` constant to match.
