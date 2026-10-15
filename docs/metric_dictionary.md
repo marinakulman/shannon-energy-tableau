@@ -1,6 +1,6 @@
-# Shannon Energy — Metric Dictionary (Tableau)
+# Shannon Energy - Metric Dictionary (Tableau)
 
-Project cut-off date: **30 June 2026**. `TODAY()` is never used — the analysis must
+Project cut-off date: **30 June 2026**. `TODAY()` is never used - the analysis must
 reproduce identically at any future date.
 
 Source of values: the `prepared/` tables produced by `scripts/prepare_data.py`.
@@ -10,7 +10,7 @@ Every control value in this document is asserted by that script on each run.
 
 ## 1. Data sources and model
 
-Five independent sources. **Fact tables are never joined to each other** — their grains
+Five independent sources. **Fact tables are never joined to each other** - their grains
 differ, and joining them would fan out rows and inflate every measure.
 
 | Source | File | Grain |
@@ -40,20 +40,20 @@ by themselves.
 | `pSegmentFocus` | String | Segment selector (RES / SME / COR / All segments) |
 
 ```
-// DataAsOf — a project constant, deliberately NOT TODAY()
+// DataAsOf - a project constant, deliberately NOT TODAY()
 #2026-06-30#
 ```
 
 ---
 
-## 3. Growth metrics — source: MonthlyPerformance
+## 3. Growth metrics - source: MonthlyPerformance
 
 ```
-// Acquisitions — count of cleaned acquisitions
+// Acquisitions - count of cleaned acquisitions
 SUM([Acquisitions])
 ```
 ```
-// Churned Customers — churn events in the selected period
+// Churned Customers - churn events in the selected period
 SUM([ChurnedCustomers])
 ```
 ```
@@ -65,7 +65,7 @@ SUM([Acquisitions]) - SUM([ChurnedCustomers])
 SUM([AcquisitionCost])
 ```
 ```
-// CPA — division guarded against zero
+// CPA - division guarded against zero
 IF SUM([Acquisitions]) > 0
 THEN SUM([AcquisitionCost]) / SUM([Acquisitions])
 END
@@ -75,7 +75,7 @@ END
 SUM([Revenue])
 ```
 ```
-// Closing Base — the base of the LAST OBSERVED MONTH in the period.
+// Closing Base - the base of the LAST OBSERVED MONTH in the period.
 // A customer base is a stock, not a flow: summing it across months is meaningless.
 
 { FIXED : MAX( IF [MonthStart] <= [pEndMonth] AND [RevenueObservationCount] = 1
@@ -90,7 +90,7 @@ SUM( IF DATETRUNC('month', [MonthStart]) = DATETRUNC('month', [Last Observed Mon
 > **Control value: 18,470.** This must equal one month's base, never a sum across months.
 
 ```
-// Monthly ARPU — revenue per customer-month observation, NOT per customer
+// Monthly ARPU - revenue per customer-month observation, NOT per customer
 IF SUM([ClosingCustomers]) > 0
 THEN SUM([Revenue]) / SUM([ClosingCustomers])
 END
@@ -125,12 +125,12 @@ END
 
 A month is eligible if it has a revenue observation **and** a positive opening base. The
 flag is computed in `prepare_data.py` **at month level**, not at row level. This is not a
-stylistic choice — it is the difference between a correct and an incorrect metric.
+stylistic choice - it is the difference between a correct and an incorrect metric.
 
 An earlier version of this calculation returned **1.92%**. Two separate defects caused it:
 
 1. **Eligibility applied at row level.** The 5,967 legacy churn events coded `LEG` have no
-   revenue rows, so a row-level filter discarded them silently before aggregation —
+   revenue rows, so a row-level filter discarded them silently before aggregation -
    removing roughly a third of all churn from the numerator.
 2. **The opening base was lost for disappearing key combinations.** Joining the previous
    month with a *left* join dropped any key combination that existed last month and not
@@ -139,8 +139,8 @@ An earlier version of this calculation returned **1.92%**. Two separate defects 
 
 ### Documented limitation
 
-The flag is fixed at the overall level, without business filters. Only January 2023 — the
-first month of the dataset, which has no preceding snapshot — is excluded. Under a narrow
+The flag is fixed at the overall level, without business filters. Only January 2023 - the
+first month of the dataset, which has no preceding snapshot - is excluded. Under a narrow
 filter a month may have a zero base; the denominator guard then returns NULL rather than a
 misleading zero.
 
@@ -149,11 +149,11 @@ rate assumes a constant hazard across the year, which the tenure analysis shows 
 
 ---
 
-## 5. Twelve-month retention — source: AcquisitionClean
+## 5. Twelve-month retention - source: AcquisitionClean
 
 `Eligible12Flag`, `Retained12Flag` and `Eligible12Cost` are pre-computed in the pipeline.
 `TenureAtChurn` is the supplied `TenureMonths`, never recomputed from days.
-`MonthsObservable` counts month boundaries between the acquisition month and the cut-off —
+`MonthsObservable` counts month boundaries between the acquisition month and the cut-off -
 month precision, not day precision.
 
 ```
@@ -192,19 +192,19 @@ different populations: CPA covers all acquisitions, this metric only mature coho
 
 ---
 
-## 6. Retention curves and tenure risk — source: RetentionCohorts
+## 6. Retention curves and tenure risk - source: RetentionCohorts
 
 The `N` axis is ordered 0, 1, 2 … 24. A customer appears at several values of `N`:
 **customers and costs must never be summed across N.**
 
 ```
-// Retention Rate — cumulative survival
+// Retention Rate - cumulative survival
 IF SUM([EligibleN]) > 0
 THEN SUM([RetainedN]) / SUM([EligibleN])
 END
 ```
 ```
-// Tenure Churn Rate — probability of leaving specifically in month N,
+// Tenure Churn Rate - probability of leaving specifically in month N,
 // among those still at risk at the start of that month
 IF SUM([AtRiskN]) > 0
 THEN SUM([ChurnAtN]) / SUM([AtRiskN])
@@ -222,7 +222,7 @@ is cumulative survival, the other a single-period hazard.
 
 ---
 
-## 7. Plan versus actual — source: PlanPerformance
+## 7. Plan versus actual - source: PlanPerformance
 
 The plan exists at three keys only: `MonthStart × ChannelCode × SegmentCode`.
 
@@ -233,14 +233,14 @@ THEN SUM([ActualAcquisitions]) / SUM([TargetAcquisitions]) - 1
 END
 ```
 ```
-// Plan Availability — guard against a plan that does not exist at this grain
+// Plan Availability - guard against a plan that does not exist at this grain
 IF SUM([TargetAcquisitions]) > 0 THEN "Plan set"
 ELSE "No plan is defined at this level of detail"
 END
 ```
 
 When sliced by region, tariff or fuel, plan-based KPIs are shown as **N/A** with that
-explanation. The plan is never spread or allocated across a grain it was not set at —
+explanation. The plan is never spread or allocated across a grain it was not set at -
 doing so would invent targets and present them as given.
 
 ---
@@ -248,7 +248,7 @@ doing so would invent targets and present them as given.
 ## 8. Revenue Rolling 12M
 
 ```
-// AnchorMonth — the last month with an actual revenue observation
+// AnchorMonth - the last month with an actual revenue observation
 // inside the selected period
 { FIXED : MAX( IF [RevenueObservationCount] = 1 AND [MonthStart] <= [pEndMonth]
                THEN [MonthStart] END ) }
