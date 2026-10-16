@@ -93,7 +93,7 @@ throughout the project.
 - **Discount 12M carries the highest monthly churn rate** of any tariff; Business Flex the
   lowest.
 - **Every channel missed its acquisition target**, with an overall shortfall of 4.2%.
-  Direct B2B is furthest behind at -6.4%, Field Sales closest at -1.4%.
+  Direct B2B is furthest behind at −6.4%, Field Sales closest at −1.4%.
 - Blended monthly churn is **2.92%**; rolling 12-month revenue is **€158.1M**.
 
 ### INFERENCE - a reasonable reading of the data
@@ -119,7 +119,7 @@ throughout the project.
 1. **Re-base channel budgeting on cost per retained customer, not CPA.** On current
    figures that means shifting spend from Price Comparison toward Digital, which delivers
    a retained customer for 35% less.
-2. **Build a retention intervention at month 10 - 11**, ahead of the observed 12–14 month
+2. **Build a retention intervention at month 10–11**, ahead of the observed 12–14 month
    spike rather than after it.
 3. **Treat the Discount 12M tariff as a retention problem, not a pricing success.** It
    acquires well and loses customers faster than any other tariff.
@@ -262,6 +262,19 @@ Stated explicitly, because a dashboard that hides them is a dashboard that misle
   sliced by region, tariff or fuel rather than being spread across a grain the plan does
   not have.
 - **Fixed cut-off date of 30 June 2026.** Deliberate, so the figures remain reproducible.
+
+---
+
+## Companion project
+
+The same raw data is analysed in Power BI in
+**[shannon-energy-powerbi](https://github.com/marinakulman/shannon-energy-powerbi)**, where the
+cleaning is done in Power Query rather than a Python pipeline, the model is secured with
+row-level security, and the measures are written in DAX.
+
+The two projects were built independently and arrive at the same figures - €46 CPA against
+35.9% retention for Price Comparison, €128 per retained customer, 2.9% monthly churn.
+Reproducing a result by a second route is how the method was checked.
 
 ---
 
